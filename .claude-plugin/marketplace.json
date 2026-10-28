@@ -1,0 +1,14 @@
+{
+  "name": "recluzegeek",
+  "owner": {
+    "name": "recluzegeek"
+  },
+  "description": "recluzegeek's Claude Code plugins.",
+  "plugins": [
+    {
+      "name": "pr-review",
+      "source": "./plugins/pr-review",
+      "description": "Codebase-aware pull request review: traces callers of changed code, flags behaviour changes in refactors, validates every finding, and always posts a summary."
+    }
+  ]
+}
