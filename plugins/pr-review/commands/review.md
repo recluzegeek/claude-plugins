@@ -1,7 +1,7 @@
 ---
 description: Codebase-aware review of a pull request (or of a local branch with --local)
 argument-hint: "<owner/repo/pull/N> [--comment] | --local <base-ref>"
-allowed-tools: Read, Grep, Glob, Task, TodoWrite, Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git fetch:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr comment:*), mcp__github_inline_comment__create_inline_comment
+allowed-tools: Read, Grep, Glob, Write, Task, TodoWrite, Bash(git diff:*), Bash(git log:*), Bash(git show:*), Bash(git rev-parse:*), Bash(git merge-base:*), Bash(git fetch:*), Bash(git ls-files:*), Bash(gh pr view:*), Bash(gh pr diff:*), Bash(gh pr comment:*), mcp__github_inline_comment__create_inline_comment
 ---
 
 Review the changes described by: $ARGUMENTS
@@ -17,6 +17,7 @@ You coordinate a code review. The repository is checked out in the working direc
 - **Concrete or nothing.** Each finding names a trigger (an input, state or sequence of events), what happens, and what should happen instead. If you can't name a realistic trigger, drop it. The one exception: a possible high-impact problem (data loss or corruption, a security hole, money or billing errors) that you can't fully confirm may be kept if its uncertainty is stated plainly.
 - **Read before claiming.** Before reporting that something is undefined, unhandled, unvalidated or unused, open the code that would prove it.
 - **Tools work.** Don't test them or make exploratory calls.
+- **Use only the allowed tools.** For files and search, use Read, Grep and Glob. The only shell commands available are `git diff`, `git log`, `git show`, `git rev-parse`, `git merge-base`, `git fetch`, `git ls-files`, and (coordinator only) `gh pr view`, `gh pr diff` and `gh pr comment`. Anything else (`ls`, `cat`, `find`, `grep`, `git grep`, `git blame`, pipes into other programs) is denied and wastes a turn.
 
 ## 1. Scope
 
@@ -89,7 +90,7 @@ Severity:
 
 P2 findings go only in the summary.
 
-**Summary.** Write the body to a file, then post or update it with `gh pr comment <N> --edit-last --create-if-none --body-file <file>`. If that command fails (some app tokens can't look up their own user), post a new comment with `gh pr comment <N> --body-file <file>` instead. The summary must always be posted.
+**Summary.** Write the body with the Write tool to a new file under `/tmp` (for example `/tmp/pr-review-summary.md`), then post or update it with `gh pr comment <N> --edit-last --create-if-none --body-file <file>`. If that command fails (some app tokens can't look up their own user), post a new comment with `gh pr comment <N> --body-file <file>` instead. The summary must always be posted.
 
 ```
 ## Code review
