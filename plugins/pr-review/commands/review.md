@@ -22,14 +22,18 @@ You coordinate a code review. The repository is checked out in the working direc
 
 **PR mode** (`<owner/repo/pull/N>`):
 - `gh pr view <N> --json title,body,baseRefName,headRefOid,files` for the title, description, base branch, head commit and files.
-- Diff: `git fetch origin <base> --quiet`, then `git diff origin/<base>...HEAD`. If that fails, use `gh pr diff <N>`. `<base-ref>` below means `origin/<base>`.
-- Earlier reviews: `gh pr view <N> --comments`. Find the newest comment containing `<!-- pr-review:sha=`. If that commit is an ancestor of HEAD, this is a follow-up review. Report only problems in `<that sha>..HEAD`, but read the whole PR for context. If HEAD equals that sha, there's nothing new: stop without posting.
+- **The PR's head commit is `headRefOid`, not `HEAD`.** In CI the checkout is often a temporary merge commit (the PR merged into its base), which doesn't appear in the PR and changes on every push. Use `headRefOid` for every sha you compare, record or show. Call it `<head>` below.
+- Diff: `git fetch origin <base> --quiet`, then `git diff origin/<base>...<head>`. If that fails, use `gh pr diff <N>`. `<base-ref>` below means `origin/<base>`.
+- Earlier reviews: `gh pr view <N> --comments`. Find the newest comment containing `<!-- pr-review:sha=`, and call its sha `<last>`.
+  - If `<last>` equals `<head>`, nothing changed: stop without posting.
+  - If `git merge-base --is-ancestor <last> <head>` succeeds, this is a follow-up. Report only problems in `git diff <last>..<head>`, but read the whole PR for context. If those new commits change no reviewable files (only docs, ignored or generated files), skip steps 3–5. Keep the previous findings in the summary, and update only its "Reviewed up to" line to `<head>`, adding "no code changes since <last>".
+  - Otherwise (a rebase or force-push, or `<last>` isn't in history), review the whole PR again.
 
 **Local mode** (`--local <base-ref>`):
 - Diff: `git diff <base-ref>...HEAD`. Title and description: `git log --format='%s%n%n%b' <base-ref>..HEAD`.
 - Never post anything. The output is the JSON in step 7.
 
-Never stop early because a PR looks trivial, comes from a bot or already has a review. A one-line change can be the bug.
+Never stop early because a PR looks trivial, comes from a bot or already has a review. A one-line change can be the bug. In PR mode, every run except the "nothing changed" case above ends with the summary posted or updated, even when there is nothing new to review.
 
 ## 2. Repository rules and ignores
 
@@ -111,8 +115,8 @@ P2 findings go only in the summary.
 
 <If there are no findings: "No problems found." and one sentence on what was checked: callers traced, behaviour compared, security and performance paths looked at.>
 
-<sub>Reviewed up to <short sha> (<n> files, +<a>/-<d>)<, follow-up of <old short sha>>. Skipped: <files or "none">.</sub>
-<!-- pr-review:sha=<full head sha> -->
+<sub>Reviewed up to <short <head> sha> (<n> files, +<a>/-<d>)<, follow-up of <old short sha>>. Skipped: <files or "none">.</sub>
+<!-- pr-review:sha=<full <head> sha, i.e. headRefOid> -->
 ```
 
 Without `--comment`, print the summary instead of posting it, and post no inline comments.
