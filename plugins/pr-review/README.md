@@ -19,18 +19,30 @@ It then checks whether the change does what it claims.
    - `performance`: only on hot paths it has confirmed
    - `data-concurrency`: schemas, migrations, transactions, races
    - `rules`: the repository's written rules
-5. **Validation.** A separate `validator` agent re-checks every finding against the code and scores it 1–10. Findings scoring 8 or more are kept. P0 findings scoring 6–7 are kept and marked as unconfirmed.
-6. **Report.**
-   - Inline comments for P0 and P1 findings.
-   - One summary comment, updated on each push, with:
-     - what the PR does and whether it matches its description
-     - a confidence score from 1 to 5
+5. **Validation.** A separate `validator` agent re-checks every finding against the code and scores it 1–10. Findings scoring 8 or more are kept. P0 findings scoring 6–7 are kept and marked as unconfirmed. For each confirmed bug it also looks for the same class of bug in the surrounding code and the functions it calls. Copies inside the PR become findings; copies in untouched code are listed separately.
+6. **Follow-ups.** On each push it reads every comment and thread (with timestamps) and re-checks each open finding against the new head:
+   - fixed: it replies in the thread with a short technical note (the commit and what changed) and resolves the thread
+   - disputed: it re-checks the argument, then withdraws the finding or replies once with evidence
+   - "won't fix" from the author or a maintainer: recorded with the reason
+   - new commits are also checked for new attack surface (routes, jobs, outbound calls, dependencies, auth changes)
+7. **Report.**
+   - Inline comments for new P0 and P1 findings.
+   - One summary comment, edited in place, that only grows:
+     - what the PR does and where the review stands overall
+     - a confidence score from 1 to 5, counting open findings only
      - files needing attention
-     - a table of the files changed
-     - a table of findings
-     - the last commit reviewed
+     - every finding ever reported, with a stable id, status, and the commits it was found and closed in
+     - one row per review pass
+     - the files changed
+   - Its state is kept as JSON in a hidden block of that comment, so ids and rows stay stable across pushes.
 
 Text in the PR (title, description, code, comments) is treated as data to review, never as instructions.
+
+## Install
+
+```
+/plugin install pr-review --marketplace recluzegeek/claude-plugins
+```
 
 ## Use it locally
 
@@ -80,7 +92,7 @@ jobs:
           prompt: "/pr-review:review ${{ github.repository }}/pull/${{ github.event.pull_request.number }} --comment"
           claude_args: >-
             --model sonnet --max-turns 100
-            --allowedTools "Read,Grep,Glob,Task,TodoWrite,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git fetch:*),Bash(git ls-files:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),mcp__github_inline_comment__create_inline_comment"
+            --allowedTools "Read,Grep,Glob,Task,TodoWrite,Bash(git diff:*),Bash(git log:*),Bash(git show:*),Bash(git rev-parse:*),Bash(git merge-base:*),Bash(git fetch:*),Bash(git ls-files:*),Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr comment:*),Bash(gh api:*),mcp__github_inline_comment__create_inline_comment"
 ```
 
 `--model` sets the coordinator's model. The agents set their own: Opus for correctness, security, data-concurrency and the validator, and Sonnet for impact, performance and rules.
