@@ -40,7 +40,7 @@ gh api graphql -F o=<owner> -F r=<repo> -F n=<N> -f query='query($o:String!,$r:S
 
 From it:
 - **The summary** is the issue comment containing `<!-- pr-review:sha=`. Its `databaseId` is `<summary-id>`, its sha is `<last>`, and its author is you (`<me>`). If there is none, this is the first review: no state, no conversation to handle, review the whole PR.
-- **The state** is the JSON in the summary's `<!-- pr-review:state ... -->` block: the findings so far (`id`, `sev`, `title`, `loc`, `status`, `found`, `closed`, `note`), the review passes, and `at`, the time of the last run. If the summary has no state block (it predates this format), build it once: number the rows of its findings table F1, F2, … in order, with status `open` and `found` set to `<last>`.
+- **The state** is the JSON in the summary's `<!-- pr-review:state ... -->` block: the findings so far (`id`, `sev`, `title`, `loc`, `status`, `found`, `closed`, `note`), the review passes, and `at`, the time of the last run. If the summary has no state block (it predates this format), build it once: number the rows of its findings table F1, F2, … in order, with status `open` and `found` set to `<last>`. Any finding without a `trigger` gets one written from its old text.
 - **Finding threads.** A thread whose first comment contains `<!-- pr-review:id=F<k> -->` belongs to finding F<k>. For older threads without the marker, match your own (`<me>`) `**P0:**`/`**P1:**` comments to findings by file and title.
 - **New comments** are comments by anyone other than `<me>` created after `at` (all of them on the first review). Comments by other bots are context only: never reply to or react to them.
 
@@ -103,7 +103,7 @@ Severity:
 ## 7. Re-check and the conversation (PR mode, follow-ups)
 
 **Re-check every open finding** at `<head>`: launch a `pr-review:validator` in re-check mode for each (in parallel, alongside step 6's validators when you can). Give it the finding, its thread's comments, and `git diff <found>..<head>`. It returns `fixed` (with the commit and the change that fixed it), `still-present`, or `withdrawn` (the finding was wrong, with evidence).
-- `fixed`: status `fixed`, `closed` = the commit that fixed it.
+- `fixed`: status `fixed`, `closed` = the commit that fixed it, and the validator's reason, cut to one sentence, in `note`.
 - `withdrawn`: status `withdrawn`, with the reason in `note`.
 - `still-present`: stays `open`, even if someone resolved its thread or said it was fixed.
 
@@ -142,7 +142,7 @@ Use `gh api` only for these calls and the step 2 query.
 **Summary.** Write the body with the Write tool to a new file under `/tmp` (for example `/tmp/pr-review-summary.md`). If `<summary-id>` exists, update it with `gh api repos/<owner>/<repo>/issues/comments/<summary-id> -X PATCH -F body=@<file>`. Otherwise post it with `gh pr comment <N> --body-file <file>`. The summary must always be posted.
 
 The summary is a record of every pass, so it only grows. Keep it stable:
-- Finding ids are given in the order found and never reused or renumbered. Rows are never removed; only `Status` and `Closed` change. Sort by id.
+- Finding ids are given in the order found and never reused or renumbered. Findings are never removed: a finding only moves from Open to Closed, which changes its header line and third line. Sort by id within each group.
 - One row is added to the passes table per run. Earlier rows never change.
 - `at` in the state is this run's time (UTC). `areas` holds every risk tag and surface seen so far.
 - Keep `-->` and `--` out of the state JSON's strings.
@@ -157,14 +157,26 @@ Counts only open findings: 5 = none open and the change is low-risk; 4 = only P2
 
 **Files needing attention:** <files with open P0 or P1 findings, or "none">
 
-| # | Severity | Finding | Location | Status | Found | Closed |
-|---|---|---|---|---|---|---|
-| F1 | P1 | <one line> | `path:line` | Fixed | `abc1234` | `def5678` |
-| F2 | P2 | <one line> | `path:line` | Open | `def5678` | |
+**Open (<n>)**
 
-Status is one of: Open, Fixed, Won't fix: <reason>, Withdrawn: <reason>. Mark unconfirmed P0s in the Finding text.
+- **F2 · P1 · Open** · [`<file name>:<line>`](https://github.com/<owner>/<repo>/blob/<full head sha>/<path>#L<line>)
+  <title>
+  <trigger: the input or state and what happens.> Found in `def5678`.
 
-<If there have never been findings: "No problems found." and one sentence on what was checked.>
+<details><summary><b>Closed (<n>)</b></summary>
+
+- **F1 · P2 · Fixed in `def5678`** · [`<file name>:<line>`](https://github.com/<owner>/<repo>/blob/<full head sha>/<path>#L<line>)
+  <title>
+  Fix: <note>. Found in `abc1234`.
+
+</details>
+
+Every finding is these three lines:
+- **Header:** id · severity · status, then the location: the file name only (no directories) and line, linked to the full path at `<head>`. Status is `Open`, `Fixed in <short sha>`, `Won't fix` or `Withdrawn`. Add `· unconfirmed` for an unconfirmed P0.
+- **Title:** the problem in about 15 words or fewer. No trigger, no fix.
+- **Third line:** for open findings, the trigger in one sentence (for an unconfirmed P0, also what is uncertain); for closed ones, `Fix:`, `Won't fix:` or `Withdrawn:` and the `note`. End with `Found in <short sha>.`
+
+Write "**Open (0)**: none." when nothing is open, and leave out the Closed block when nothing is closed. If there have never been findings, write only "No problems found." and one sentence on what was checked.
 
 <details><summary>Review passes (<n>)</summary>
 
@@ -192,7 +204,7 @@ Status is one of: Open, Fixed, Won't fix: <reason>, Withdrawn: <reason>. Mark un
 <sub>Reviewed up to <short <head> sha>. Skipped: <files or "none">.</sub>
 <!-- pr-review:sha=<full <head> sha, i.e. headRefOid> -->
 <!-- pr-review:state
-{"v":1,"at":"<ISO time>","areas":["security","POST /internal/x"],"passes":[{"sha":"<short>","at":"<ISO time>","scope":"full","files":20,"added":1502,"deleted":239,"new":6,"closed":0,"notes":""}],"findings":[{"id":"F1","sev":"P1","category":"correctness","title":"<one line>","loc":"path:line","status":"fixed","found":"<short>","closed":"<short>","note":""}]}
+{"v":1,"at":"<ISO time>","areas":["security","POST /internal/x"],"passes":[{"sha":"<short>","at":"<ISO time>","scope":"full","files":20,"added":1502,"deleted":239,"new":6,"closed":0,"notes":""}],"findings":[{"id":"F1","sev":"P1","category":"correctness","title":"<15 words or fewer>","trigger":"<one sentence>","loc":"path:line","status":"fixed","found":"<short>","closed":"<short>","note":""}]}
 -->
 ```
 
