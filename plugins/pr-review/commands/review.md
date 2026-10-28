@@ -83,7 +83,7 @@ Severity:
 
 P2 findings go only in the summary.
 
-**Summary.** Write the body to a file, then post or update it with `gh pr comment <N> --edit-last --create-if-none --body-file <file>`:
+**Summary.** Write the body to a file, then post or update it with `gh pr comment <N> --edit-last --create-if-none --body-file <file>`. If that command fails (some app tokens can't look up their own user), post a new comment with `gh pr comment <N> --body-file <file>` instead. The summary must always be posted.
 
 ```
 ## Code review
