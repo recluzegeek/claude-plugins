@@ -69,6 +69,10 @@ jobs:
         with:
           fetch-depth: 0   # the review diffs against the base branch and reads history
       - uses: anthropics/claude-code-action@v1
+        env:
+          # Required: subagents otherwise run in the background, and the action
+          # ends the run before they report, so nothing gets posted.
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}   # or anthropic_api_key
           plugin_marketplaces: "https://github.com/recluzegeek/claude-plugins.git"
